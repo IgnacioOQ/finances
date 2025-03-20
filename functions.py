@@ -1,3 +1,5 @@
+from imports import *
+
 
 def fetch_one_ticker(symbol,period="10y"):
     try:
