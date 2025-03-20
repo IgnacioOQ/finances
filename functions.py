@@ -1,9 +1,9 @@
 from imports import *
 
-def fetch_one_ticker(symbol):
+def fetch_one_ticker(symbol,period="10y"):
     try:
         stock = yf.Ticker(symbol)
-        hist = stock.history(period="10y")
+        hist = stock.history(period=period)
 
         if hist.empty:
             print("No historical price data available.")
