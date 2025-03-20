@@ -1,3 +1,5 @@
+from imports import *
+
 def fetch_one_ticker(symbol):
     try:
         stock = yf.Ticker(symbol)
