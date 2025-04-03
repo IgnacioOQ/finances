@@ -1,5 +1,11 @@
 from imports import *
 
+# Fetch S&P 500 symbols from Wikipedia
+def get_sp500_symbols():
+    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    table = pd.read_html(url)[0]
+    return table[['Symbol', 'Security', 'GICS Sector']]
+
 
 def fetch_one_ticker(symbol,period="10y"):
     try:
