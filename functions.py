@@ -138,6 +138,7 @@ def fetch_historical_stock_data(ticker_list, verbose=False):
     revenue_dict = {}
 
     for symbol in tqdm(ticker_list):
+        time.sleep(0.25)
         try:
             stock = yf.Ticker(symbol)
             hist = stock.history(period="15y")
