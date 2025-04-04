@@ -229,13 +229,20 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
         weighted_metrics[metric]['Revenue'] = compute_weighted_avg(static_df, metric, 'Revenue')
 
     # Print or return the weighted metrics
-    if verbose:
-        print("\n=========== Weighted Static Metrics ===========\n")
-        for metric, weights in weighted_metrics.items():
-            print(f"{metric}:")
-            for by, value in weights.items():
-                print(f"  Weighted by {by}: {value}")
-            print()
+    print("\n=========== Metric Explanations ===========\n")
+    print("• P/B Ratio (Price-to-Book): Compares a company’s market value to its book value. Lower values may indicate undervaluation.")
+    print("• PEG Ratio (Price/Earnings to Growth): Adjusts the P/E ratio by expected earnings growth. A PEG ~1 is considered fairly valued.")
+    print("• Debt to Equity: Measures leverage — how much debt a company uses to finance its assets relative to equity.")
+    print("• EBITDA: Earnings before interest, taxes, depreciation, and amortization — used to analyze operating performance.\n")
+
+
+    print("\n=========== Weighted Static Metrics ===========\n")
+    for metric, weights in weighted_metrics.items():
+        print(f"{metric}:")
+        for by, value in weights.items():
+            print(f"  Weighted by {by}: {value}")
+        print()
+        
 
     # --- Weighted P/E Ratio Time Series ---
     all_data = []
