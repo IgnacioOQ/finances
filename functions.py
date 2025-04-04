@@ -131,7 +131,7 @@ def download_and_plot_stock_data(tickers, period='10y'):
 
     return normalized_prices
 
-def fetch_historical_stock_data(ticker_list, verbose=False):
+def fetch_historical_stock_data(ticker_list, period = '5Y',verbose=False):
     results = {}
     static_metrics = {}
     earnings_dict = {}
@@ -141,7 +141,7 @@ def fetch_historical_stock_data(ticker_list, verbose=False):
         time.sleep(0.25)
         try:
             stock = yf.Ticker(symbol)
-            hist = stock.history(period="15y")
+            hist = stock.history(period=period)
 
             if hist.empty:
                 print(f"No historical price data available for {symbol}.\n")
