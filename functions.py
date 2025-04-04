@@ -131,7 +131,7 @@ def download_and_plot_stock_data(tickers, period='10y'):
 
     return normalized_prices
 
-def fetch_historical_stock_data(ticker_list, period = '5Y',verbose=False):
+def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
     results = {}
     static_metrics = {}
     earnings_dict = {}
@@ -190,6 +190,7 @@ def fetch_historical_stock_data(ticker_list, period = '5Y',verbose=False):
             print(f"Error processing {symbol}: {e}\n")
             continue
 
+    # Verbose Static Summary
     if verbose:
         print("\n=========== Static Financial Metrics Summary ===========\n")
         for metric in ['P/B Ratio', 'PEG Ratio', 'Debt to Equity', 'EBITDA']:
@@ -198,27 +199,45 @@ def fetch_historical_stock_data(ticker_list, period = '5Y',verbose=False):
                 print(f"  {symbol}: {static_metrics[symbol][metric]}")
             print()
 
-        metrics_to_plot = {
-            'Close': 'Stock Price',
-            'Market_Cap': 'Market Capitalization',
-            'P/E_Ratio': 'P/E Ratio (approx)',
-            'Dividend_Yield': 'Dividend Yield'
-        }
+    # Create static dataframes
+    symbols = list(static_metrics.keys())
+    static_df = pd.DataFrame.from_dict(static_metrics, orient='index').reindex(symbols)
+    static_df['Earnings'] = pd.Series(earnings_dict).reindex(symbols).fillna(0)
+    static_df['Revenue'] = pd.Series(revenue_dict).reindex(symbols).fillna(0)
 
-        plt.style.use('ggplot')
-        for column, title in metrics_to_plot.items():
-            plt.figure(figsize=(8, 4))
-            for symbol in results.keys():
-                df = results[symbol]
-                plt.plot(df.index, df[column], label=symbol)
-            plt.title(f"Comparison: {title}")
-            plt.xlabel('Date')
-            plt.ylabel(title)
-            plt.legend()
-            plt.tight_layout()
-            plt.show()
+    market_caps = {
+        symbol: results[symbol]['Market_Cap'].iloc[-1] if not results[symbol].empty else 0
+        for symbol in symbols
+    }
+    static_df['Market_Cap'] = pd.Series(market_caps)
 
-    # --- Aggregate Weighted P/E Ratios ---
+    # Weighted averages
+    def compute_weighted_avg(df, metric, weight):
+        valid = df[[metric, weight]].dropna()
+        return (valid[metric] * valid[weight]).sum() / valid[weight].sum() if valid[weight].sum() != 0 else None
+
+    weighted_metrics = {
+        'P/B Ratio': {},
+        'PEG Ratio': {},
+        'Debt to Equity': {},
+        'EBITDA': {}
+    }
+
+    for metric in weighted_metrics.keys():
+        weighted_metrics[metric]['Market Cap'] = compute_weighted_avg(static_df, metric, 'Market_Cap')
+        weighted_metrics[metric]['Earnings'] = compute_weighted_avg(static_df, metric, 'Earnings')
+        weighted_metrics[metric]['Revenue'] = compute_weighted_avg(static_df, metric, 'Revenue')
+
+    # Print or return the weighted metrics
+    if verbose:
+        print("\n=========== Weighted Static Metrics ===========\n")
+        for metric, weights in weighted_metrics.items():
+            print(f"{metric}:")
+            for by, value in weights.items():
+                print(f"  Weighted by {by}: {value}")
+            print()
+
+    # --- Weighted P/E Ratio Time Series ---
     all_data = []
     for symbol, df in results.items():
         temp = df[['P/E_Ratio', 'Market_Cap']].copy()
@@ -228,41 +247,29 @@ def fetch_historical_stock_data(ticker_list, period = '5Y',verbose=False):
         all_data.append(temp)
     combined = pd.concat(all_data)
 
-    # Pivot for multi-column weighting
     pe = combined.pivot_table(index=combined.index, columns='Symbol', values='P/E_Ratio')
     mcap = combined.pivot_table(index=combined.index, columns='Symbol', values='Market_Cap')
 
-    # Correctly shape static earnings and revenue into broadcastable DataFrames
     earnings_series = pd.Series(earnings_dict).reindex(pe.columns).fillna(0)
     revenue_series = pd.Series(revenue_dict).reindex(pe.columns).fillna(0)
 
-    earnings_matrix = pd.DataFrame(
-        [earnings_series.values] * len(pe.index),
-        index=pe.index,
-        columns=pe.columns
-    )
+    earnings_matrix = pd.DataFrame([earnings_series.values] * len(pe), index=pe.index, columns=pe.columns)
+    revenue_matrix = pd.DataFrame([revenue_series.values] * len(pe), index=pe.index, columns=pe.columns)
 
-    revenue_matrix = pd.DataFrame(
-        [revenue_series.values] * len(pe.index),
-        index=pe.index,
-        columns=pe.columns
-    )
-
-    # Compute weighted P/E ratios
     weighted_pe_mcap = (pe * mcap).sum(axis=1) / mcap.sum(axis=1)
     weighted_pe_earnings = (pe * earnings_matrix).sum(axis=1) / earnings_matrix.sum(axis=1)
     weighted_pe_revenue = (pe * revenue_matrix).sum(axis=1) / revenue_matrix.sum(axis=1)
 
-    # --- Plot all three weighted P/Es ---
     plt.figure(figsize=(8, 4))
     plt.plot(weighted_pe_mcap.index, weighted_pe_mcap, label='Market Cap Weighted P/E')
     plt.plot(weighted_pe_earnings.index, weighted_pe_earnings, label='Earnings Weighted P/E')
     plt.plot(weighted_pe_revenue.index, weighted_pe_revenue, label='Revenue Weighted P/E')
-    plt.title("Weighted Average P/E Ratios")
+    plt.title("Weighted Average P/E Ratios Over Time")
     plt.xlabel("Date")
-    plt.ylabel("Weighted P/E")
+    plt.ylabel("P/E Ratio")
     plt.legend()
     plt.tight_layout()
     plt.show()
 
     return results
+
