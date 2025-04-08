@@ -147,7 +147,15 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
                 print(f"No historical price data available for {symbol}.\n")
                 continue
 
-            info = stock.info
+            try:
+                info = stock.info
+            except Exception as e:
+                print(f"Could not fetch info for {symbol}: {e}")
+                continue
+
+            quote_type = info.get("quoteType", "").upper()
+            is_etf = (quote_type == "ETF")
+
             shares_outstanding = info.get("sharesOutstanding", None)
             pb_ratio = info.get("priceToBook", None)
             peg_ratio = info.get("pegRatio", None)
@@ -157,10 +165,25 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
             earnings = info.get("netIncomeToCommon", None)
             revenue = info.get("totalRevenue", None)
 
-            if shares_outstanding is None or eps is None:
-                print(f"Missing required data for {symbol}.\n")
+            # Dividends
+            dividends = stock.dividends
+            if not dividends.empty:
+                dividends = dividends.resample('ME').sum()
+                price_monthly = hist['Close'].resample('ME').last()
+                dividend_yield = (dividends / price_monthly).fillna(0)
+                hist['Dividend_Yield'] = dividend_yield.reindex(hist.index, method='ffill').fillna(0)
+            else:
+                hist['Dividend_Yield'] = 0
+
+            # ETF or missing valuation data
+            if is_etf or shares_outstanding is None or eps is None:
+                if verbose:
+                    print(f"Skipping valuation metrics for {symbol} (ETF or missing data).")
+                hist_monthly = hist[['Close', 'Dividend_Yield']].resample('ME').last()
+                results[symbol] = hist_monthly
                 continue
 
+            # Proceed with valuation metrics for stocks
             static_metrics[symbol] = {
                 'P/B Ratio': pb_ratio,
                 'PEG Ratio': peg_ratio,
@@ -174,15 +197,6 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
             hist['Market_Cap'] = hist['Close'] * shares_outstanding
             hist['P/E_Ratio'] = hist['Close'] / eps if eps else None
 
-            dividends = stock.dividends
-            if not dividends.empty:
-                dividends = dividends.resample('ME').sum()
-                price_monthly = hist['Close'].resample('ME').last()
-                dividend_yield = (dividends / price_monthly).fillna(0)
-                hist['Dividend_Yield'] = dividend_yield.reindex(hist.index, method='ffill').fillna(0)
-            else:
-                hist['Dividend_Yield'] = 0
-
             hist_monthly = hist[['Close', 'Market_Cap', 'P/E_Ratio', 'Dividend_Yield']].resample('ME').last()
             results[symbol] = hist_monthly
 
@@ -191,7 +205,7 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
             continue
 
     # Verbose Static Summary
-    if verbose:
+    if verbose and static_metrics:
         print("\n=========== Static Financial Metrics Summary ===========\n")
         for metric in ['P/B Ratio', 'PEG Ratio', 'Debt to Equity', 'EBITDA']:
             print(f"{metric}:")
@@ -199,14 +213,14 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
                 print(f"  {symbol}: {static_metrics[symbol][metric]}")
             print()
 
-    # Create static dataframes
+    # Create static dataframe
     symbols = list(static_metrics.keys())
     static_df = pd.DataFrame.from_dict(static_metrics, orient='index').reindex(symbols)
     static_df['Earnings'] = pd.Series(earnings_dict).reindex(symbols).fillna(0)
     static_df['Revenue'] = pd.Series(revenue_dict).reindex(symbols).fillna(0)
 
     market_caps = {
-        symbol: results[symbol]['Market_Cap'].iloc[-1] if not results[symbol].empty else 0
+        symbol: results[symbol]['Market_Cap'].iloc[-1] if 'Market_Cap' in results[symbol].columns else 0
         for symbol in symbols
     }
     static_df['Market_Cap'] = pd.Series(market_caps)
@@ -228,13 +242,12 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
         weighted_metrics[metric]['Earnings'] = compute_weighted_avg(static_df, metric, 'Earnings')
         weighted_metrics[metric]['Revenue'] = compute_weighted_avg(static_df, metric, 'Revenue')
 
-    # Print or return the weighted metrics
+    # Print metric explanations and results
     print("\n=========== Metric Explanations ===========\n")
     print("• P/B Ratio (Price-to-Book): Compares a company’s market value to its book value. Lower values may indicate undervaluation.")
     print("• PEG Ratio (Price/Earnings to Growth): Adjusts the P/E ratio by expected earnings growth. A PEG ~1 is considered fairly valued.")
     print("• Debt to Equity: Measures leverage — how much debt a company uses to finance its assets relative to equity.")
     print("• EBITDA: Earnings before interest, taxes, depreciation, and amortization — used to analyze operating performance.\n")
-
 
     print("\n=========== Weighted Static Metrics ===========\n")
     for metric, weights in weighted_metrics.items():
@@ -242,41 +255,41 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
         for by, value in weights.items():
             print(f"  Weighted by {by}: {value}")
         print()
-        
 
-    # --- Weighted P/E Ratio Time Series ---
+    # Weighted P/E Ratio Time Series
     all_data = []
     for symbol, df in results.items():
-        temp = df[['P/E_Ratio', 'Market_Cap']].copy()
-        temp['Symbol'] = symbol
-        temp['Earnings'] = earnings_dict.get(symbol, 0)
-        temp['Revenue'] = revenue_dict.get(symbol, 0)
-        all_data.append(temp)
-    combined = pd.concat(all_data)
+        if 'P/E_Ratio' in df.columns and 'Market_Cap' in df.columns:
+            temp = df[['P/E_Ratio', 'Market_Cap']].copy()
+            temp['Symbol'] = symbol
+            temp['Earnings'] = earnings_dict.get(symbol, 0)
+            temp['Revenue'] = revenue_dict.get(symbol, 0)
+            all_data.append(temp)
 
-    pe = combined.pivot_table(index=combined.index, columns='Symbol', values='P/E_Ratio')
-    mcap = combined.pivot_table(index=combined.index, columns='Symbol', values='Market_Cap')
+    if all_data:
+        combined = pd.concat(all_data)
+        pe = combined.pivot_table(index=combined.index, columns='Symbol', values='P/E_Ratio')
+        mcap = combined.pivot_table(index=combined.index, columns='Symbol', values='Market_Cap')
 
-    earnings_series = pd.Series(earnings_dict).reindex(pe.columns).fillna(0)
-    revenue_series = pd.Series(revenue_dict).reindex(pe.columns).fillna(0)
+        earnings_series = pd.Series(earnings_dict).reindex(pe.columns).fillna(0)
+        revenue_series = pd.Series(revenue_dict).reindex(pe.columns).fillna(0)
 
-    earnings_matrix = pd.DataFrame([earnings_series.values] * len(pe), index=pe.index, columns=pe.columns)
-    revenue_matrix = pd.DataFrame([revenue_series.values] * len(pe), index=pe.index, columns=pe.columns)
+        earnings_matrix = pd.DataFrame([earnings_series.values] * len(pe), index=pe.index, columns=pe.columns)
+        revenue_matrix = pd.DataFrame([revenue_series.values] * len(pe), index=pe.index, columns=pe.columns)
 
-    weighted_pe_mcap = (pe * mcap).sum(axis=1) / mcap.sum(axis=1)
-    weighted_pe_earnings = (pe * earnings_matrix).sum(axis=1) / earnings_matrix.sum(axis=1)
-    weighted_pe_revenue = (pe * revenue_matrix).sum(axis=1) / revenue_matrix.sum(axis=1)
+        weighted_pe_mcap = (pe * mcap).sum(axis=1) / mcap.sum(axis=1)
+        weighted_pe_earnings = (pe * earnings_matrix).sum(axis=1) / earnings_matrix.sum(axis=1)
+        weighted_pe_revenue = (pe * revenue_matrix).sum(axis=1) / revenue_matrix.sum(axis=1)
 
-    plt.figure(figsize=(8, 4))
-    plt.plot(weighted_pe_mcap.index, weighted_pe_mcap, label='Market Cap Weighted P/E')
-    plt.plot(weighted_pe_earnings.index, weighted_pe_earnings, label='Earnings Weighted P/E')
-    plt.plot(weighted_pe_revenue.index, weighted_pe_revenue, label='Revenue Weighted P/E')
-    plt.title("Weighted Average P/E Ratios Over Time")
-    plt.xlabel("Date")
-    plt.ylabel("P/E Ratio")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+        plt.figure(figsize=(8, 4))
+        plt.plot(weighted_pe_mcap.index, weighted_pe_mcap, label='Market Cap Weighted P/E')
+        plt.plot(weighted_pe_earnings.index, weighted_pe_earnings, label='Earnings Weighted P/E')
+        plt.plot(weighted_pe_revenue.index, weighted_pe_revenue, label='Revenue Weighted P/E')
+        plt.title("Weighted Average P/E Ratios Over Time")
+        plt.xlabel("Date")
+        plt.ylabel("P/E Ratio")
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
 
     return results
-
