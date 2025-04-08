@@ -98,39 +98,6 @@ def fetch_one_ticker(symbol,period="10y"):
         return None
 
 
-def download_and_plot_stock_data(tickers, period='10y'):
-    tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
-
-    # Download data using Yahoo Finance
-    data = yf.download(tickers, period=period, auto_adjust=False)
-
-    # Prefer 'Adj Close' over 'Close'
-    if 'Adj Close' in data:
-        prices = data['Adj Close']
-    elif 'Close' in data:
-        print("Warning: 'Adj Close' not found. Using 'Close' instead.")
-        prices = data['Close']
-    else:
-        raise ValueError("Neither 'Adj Close' nor 'Close' found in the downloaded data.")
-
-    # Normalize prices
-    normalized_prices = (prices / prices.iloc[0]).dropna()
-
-    # Plotting
-    plt.figure(figsize=(8, 4))
-    for column in normalized_prices.columns:
-        plt.plot(normalized_prices.index, normalized_prices[column], label=column)
-
-    plt.xlabel('Date')
-    plt.ylabel('Normalized Price')
-    plt.title(f'Stock Performance (Normalized) — Period: {period}')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
-    return normalized_prices
-
 def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
     results = {}
     static_metrics = {}
@@ -293,3 +260,4 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
         plt.show()
 
     return results
+
