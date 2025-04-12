@@ -131,6 +131,40 @@ def download_and_plot_stock_data(tickers, period='10y'):
 
     return normalized_prices
 
+def download_and_plot_daily_pct_change(tickers, period='10y'):
+    tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
+
+    # Download data using Yahoo Finance
+    data = yf.download(tickers, period=period, auto_adjust=False)
+
+    # Prefer 'Adj Close' over 'Close'
+    if 'Adj Close' in data:
+        prices = data['Adj Close']
+    elif 'Close' in data:
+        print("Warning: 'Adj Close' not found. Using 'Close' instead.")
+        prices = data['Close']
+    else:
+        raise ValueError("Neither 'Adj Close' nor 'Close' found in the downloaded data.")
+
+    # Calculate daily percent change
+    pct_change = prices.pct_change().dropna() * 100  # Convert to percentage
+
+    # Plotting
+    plt.figure(figsize=(10, 5))
+    for column in pct_change.columns:
+        plt.plot(pct_change.index, pct_change[column], label=column, alpha=0.7)
+
+    plt.xlabel('Date')
+    plt.ylabel('Daily % Change')
+    plt.title(f'Daily Percentage Change — Period: {period}')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+    return pct_change
+
+
 def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
     results = {}
     static_metrics = {}
