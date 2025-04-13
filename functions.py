@@ -28,7 +28,7 @@ def fetch_one_ticker(symbol,period="10y"):
         if shares_outstanding is None:
             print("Shares outstanding data not available.")
             shares_outstanding = 1
-            return None
+            # return None
 
         # --- Calculate Market Cap History ---
         hist['Market_Cap'] = hist['Close'] * shares_outstanding
