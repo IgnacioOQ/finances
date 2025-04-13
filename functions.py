@@ -24,6 +24,7 @@ def fetch_one_ticker(symbol,period="10y"):
         debt_to_equity = info.get("debtToEquity", None)
         ebitda = info.get("ebitda", None)
         eps = info.get("trailingEps", None)
+        pe = info.get('trailingPE',None)
 
         if shares_outstanding is None:
             print("Shares outstanding data not available.")
