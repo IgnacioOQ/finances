@@ -117,7 +117,8 @@ def download_and_plot_stock_data(
         retry_delay (float): delay between retries (seconds)
     """
 
-    tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included
+    # tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included
+    tickers = list(set([str(t) for t in tickers] + ['SPY', 'RSP']))
 
     all_data = []
 
@@ -198,7 +199,8 @@ def download_and_plot_daily_pct_change(
         retry_delay (float): delay between retries (seconds)
     """
 
-    tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included
+    # tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included
+    tickers = list(set([str(t) for t in tickers] + ['SPY', 'RSP']))
 
     all_data = []
 
