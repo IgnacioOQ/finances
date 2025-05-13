@@ -104,8 +104,16 @@ def download_and_plot_stock_data(tickers, period='10y'):
     tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
 
     # Download data using Yahoo Finance
-    data = yf.download(tickers, period=period, auto_adjust=False)
-
+    # data = yf.download(tickers, period=period, auto_adjust=False)
+    all_data = []
+    for ticker in tickers:
+        # print(f"Downloading {ticker}...")
+        df = yf.download(ticker, period=period, auto_adjust=False)
+        # add ticker to column names to match multiindex style
+        df.columns = pd.MultiIndex.from_product([[ticker], df.columns])
+        all_data.append(df)
+        time.sleep(0.5)
+        
     # Prefer 'Adj Close' over 'Close'
     if 'Adj Close' in data:
         prices = data['Adj Close']
@@ -137,8 +145,15 @@ def download_and_plot_daily_pct_change(tickers, period='10y'):
     tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
 
     # Download data using Yahoo Finance
-    data = yf.download(tickers, period=period, auto_adjust=False)
-
+    # data = yf.download(tickers, period=period, auto_adjust=False)
+    all_data = []
+    for ticker in tickers:
+        # print(f"Downloading {ticker}...")
+        df = yf.download(ticker, period=period, auto_adjust=False)
+        # add ticker to column names to match multiindex style
+        df.columns = pd.MultiIndex.from_product([[ticker], df.columns])
+        all_data.append(df)
+        time.sleep(0.5)
     # Prefer 'Adj Close' over 'Close'
     if 'Adj Close' in data:
         prices = data['Adj Close']
@@ -174,7 +189,7 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
     revenue_dict = {}
 
     for symbol in tqdm(ticker_list):
-        time.sleep(0.25)
+        time.sleep(0.5)
         try:
             stock = yf.Ticker(symbol)
             hist = stock.history(period=period)
