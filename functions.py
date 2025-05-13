@@ -110,7 +110,7 @@ def download_and_plot_stock_data(
     Download stock data with retries and plot normalized price performance.
 
     Parameters:
-        tickers (list): list of tickers
+        tickers (list/tuple/pd.Index/pd.MultiIndex): list of tickers
         period (str): yfinance period (default '10y')
         delay (float): delay between downloads (seconds)
         max_retries (int): max retries per ticker
@@ -118,10 +118,15 @@ def download_and_plot_stock_data(
     """
 
     # --- Safely sanitize tickers list ---
-    if not isinstance(tickers, (list, tuple, pd.Index)):
-        raise TypeError("tickers must be a list, tuple, or pandas Index")
-    
-    tickers = list(set([str(t) for t in tickers] + ['SPY', 'RSP']))
+    if isinstance(tickers, pd.MultiIndex):
+        tickers = tickers.get_level_values(0).unique().tolist()
+    elif isinstance(tickers, pd.Index):
+        tickers = tickers.unique().tolist()
+    elif not isinstance(tickers, (list, tuple)):
+        raise TypeError("tickers must be a list, tuple, pandas Index, or pandas MultiIndex")
+
+    tickers = [str(t) for t in tickers if pd.notna(t) and str(t).strip() != ""]
+    tickers = list(set(tickers + ['SPY', 'RSP']))
 
     all_data = []
 
@@ -196,7 +201,7 @@ def download_and_plot_daily_pct_change(
     Download stock data with retries and plot daily percentage change.
 
     Parameters:
-        tickers (list): list of tickers
+        tickers (list/tuple/pd.Index/pd.MultiIndex): list of tickers
         period (str): yfinance period (default '10y')
         delay (float): delay between downloads (seconds)
         max_retries (int): max retries per ticker
@@ -204,10 +209,15 @@ def download_and_plot_daily_pct_change(
     """
 
     # --- Safely sanitize tickers list ---
-    if not isinstance(tickers, (list, tuple, pd.Index)):
-        raise TypeError("tickers must be a list, tuple, or pandas Index")
-    
-    tickers = list(set([str(t) for t in tickers] + ['SPY', 'RSP']))
+    if isinstance(tickers, pd.MultiIndex):
+        tickers = tickers.get_level_values(0).unique().tolist()
+    elif isinstance(tickers, pd.Index):
+        tickers = tickers.unique().tolist()
+    elif not isinstance(tickers, (list, tuple)):
+        raise TypeError("tickers must be a list, tuple, pandas Index, or pandas MultiIndex")
+
+    tickers = [str(t) for t in tickers if pd.notna(t) and str(t).strip() != ""]
+    tickers = list(set(tickers + ['SPY', 'RSP']))
 
     all_data = []
 
