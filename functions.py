@@ -104,7 +104,7 @@ def download_and_plot_stock_data(
     period='10y',
     delay=0.5,
     max_retries=3,
-    retry_delay=5
+    retry_delay=2
 ):
     """
     Download stock data with retries and plot normalized price performance.
@@ -117,7 +117,10 @@ def download_and_plot_stock_data(
         retry_delay (float): delay between retries (seconds)
     """
 
-    # tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included
+    # --- Safely sanitize tickers list ---
+    if not isinstance(tickers, (list, tuple, pd.Index)):
+        raise TypeError("tickers must be a list, tuple, or pandas Index")
+    
     tickers = list(set([str(t) for t in tickers] + ['SPY', 'RSP']))
 
     all_data = []
@@ -136,7 +139,7 @@ def download_and_plot_stock_data(
                     success = True
                 else:
                     print(f"Warning: No data for {ticker}. Skipping.")
-                    success = True  # treat as success to stop retrying
+                    success = True
             except Exception as e:
                 print(f"Error downloading {ticker}: {e}")
                 attempt += 1
@@ -151,7 +154,7 @@ def download_and_plot_stock_data(
     if not all_data:
         raise ValueError("No data downloaded for any ticker.")
 
-    # Combine dataframes to match yf.download(tickers) style
+    # Combine dataframes
     data = pd.concat(all_data, axis=1)
 
     # Extract prices
@@ -181,6 +184,7 @@ def download_and_plot_stock_data(
 
     return normalized_prices
 
+
 def download_and_plot_daily_pct_change(
     tickers,
     period='10y',
@@ -199,7 +203,10 @@ def download_and_plot_daily_pct_change(
         retry_delay (float): delay between retries (seconds)
     """
 
-    # tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included
+    # --- Safely sanitize tickers list ---
+    if not isinstance(tickers, (list, tuple, pd.Index)):
+        raise TypeError("tickers must be a list, tuple, or pandas Index")
+    
     tickers = list(set([str(t) for t in tickers] + ['SPY', 'RSP']))
 
     all_data = []
@@ -262,6 +269,7 @@ def download_and_plot_daily_pct_change(
     plt.show()
 
     return pct_change
+
 
 
 def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
