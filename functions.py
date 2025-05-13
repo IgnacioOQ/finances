@@ -99,75 +99,26 @@ def fetch_one_ticker(symbol,period="10y"):
         print(f"Error occurred: {e}")
         return None
 
-def download_and_plot_stock_data(
-    tickers,
-    period='10y',
-    delay=0.5,
-    max_retries=3,
-    retry_delay=2
-):
-    """
-    Download stock data with retries and plot normalized price performance.
+def download_and_plot_stock_data(tickers, period='10y'):
+    tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
 
-    Parameters:
-        tickers (list/tuple/pd.Index/pd.MultiIndex): list of tickers
-        period (str): yfinance period (default '10y')
-        delay (float): delay between downloads (seconds)
-        max_retries (int): max retries per ticker
-        retry_delay (float): delay between retries (seconds)
-    """
-
-    # --- Safely sanitize tickers list ---
-    if isinstance(tickers, pd.MultiIndex):
-        tickers = tickers.get_level_values(0).unique().tolist()
-    elif isinstance(tickers, pd.Index):
-        tickers = tickers.unique().tolist()
-    elif not isinstance(tickers, (list, tuple)):
-        raise TypeError("tickers must be a list, tuple, pandas Index, or pandas MultiIndex")
-
-    tickers = [str(t) for t in tickers if pd.notna(t) and str(t).strip() != ""]
-    tickers = list(set(tickers + ['SPY', 'RSP']))
-
-    all_data = []
-
-    for ticker in tickers:
-        attempt = 0
-        success = False
-
-        while attempt < max_retries and not success:
-            try:
-                print(f"Downloading {ticker} (attempt {attempt + 1})...")
-                df = yf.download(ticker, period=period, auto_adjust=False)
-                if not df.empty:
-                    df.columns = pd.MultiIndex.from_product([[ticker], df.columns])
-                    all_data.append(df)
-                    success = True
-                else:
-                    print(f"Warning: No data for {ticker}. Skipping.")
-                    success = True
-            except Exception as e:
-                print(f"Error downloading {ticker}: {e}")
-                attempt += 1
-                if attempt < max_retries:
-                    print(f"Retrying {ticker} in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
-                else:
-                    print(f"Failed to download {ticker} after {max_retries} attempts.")
-
-        time.sleep(delay)
-
-    if not all_data:
-        raise ValueError("No data downloaded for any ticker.")
-
-    # Combine dataframes
-    data = pd.concat(all_data, axis=1)
-
-    # Extract prices
-    if ('Adj Close' in data.columns.get_level_values(1)):
-        prices = data.xs('Adj Close', level=1, axis=1)
-    elif ('Close' in data.columns.get_level_values(1)):
+    # Download data using Yahoo Finance
+    data = yf.download(tickers, period=period, auto_adjust=False)
+    # all_data = []
+    # for ticker in tickers:
+    #     # print(f"Downloading {ticker}...")
+    #     df = yf.download(ticker, period=period, auto_adjust=False)
+    #     # add ticker to column names to match multiindex style
+    #     df.columns = pd.MultiIndex.from_product([[ticker], df.columns])
+    #     all_data.append(df)
+    #     time.sleep(0.5)
+        
+    # Prefer 'Adj Close' over 'Close'
+    if 'Adj Close' in data:
+        prices = data['Adj Close']
+    elif 'Close' in data:
         print("Warning: 'Adj Close' not found. Using 'Close' instead.")
-        prices = data.xs('Close', level=1, axis=1)
+        prices = data['Close']
     else:
         raise ValueError("Neither 'Adj Close' nor 'Close' found in the downloaded data.")
 
@@ -176,8 +127,8 @@ def download_and_plot_stock_data(
 
     # Plotting
     plt.figure(figsize=(8, 4))
-    for ticker in normalized_prices.columns:
-        plt.plot(normalized_prices.index, normalized_prices[ticker], label=ticker)
+    for column in normalized_prices.columns:
+        plt.plot(normalized_prices.index, normalized_prices[column], label=column)
 
     plt.xlabel('Date')
     plt.ylabel('Normalized Price')
@@ -190,85 +141,35 @@ def download_and_plot_stock_data(
     return normalized_prices
 
 
-def download_and_plot_daily_pct_change(
-    tickers,
-    period='10y',
-    delay=0.5,
-    max_retries=3,
-    retry_delay=2
-):
-    """
-    Download stock data with retries and plot daily percentage change.
+def download_and_plot_daily_pct_change(tickers, period='10y'):
+    tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
 
-    Parameters:
-        tickers (list/tuple/pd.Index/pd.MultiIndex): list of tickers
-        period (str): yfinance period (default '10y')
-        delay (float): delay between downloads (seconds)
-        max_retries (int): max retries per ticker
-        retry_delay (float): delay between retries (seconds)
-    """
-
-    # --- Safely sanitize tickers list ---
-    if isinstance(tickers, pd.MultiIndex):
-        tickers = tickers.get_level_values(0).unique().tolist()
-    elif isinstance(tickers, pd.Index):
-        tickers = tickers.unique().tolist()
-    elif not isinstance(tickers, (list, tuple)):
-        raise TypeError("tickers must be a list, tuple, pandas Index, or pandas MultiIndex")
-
-    tickers = [str(t) for t in tickers if pd.notna(t) and str(t).strip() != ""]
-    tickers = list(set(tickers + ['SPY', 'RSP']))
-
+    # Download data using Yahoo Finance
+    # data = yf.download(tickers, period=period, auto_adjust=False)
     all_data = []
-
     for ticker in tickers:
-        attempt = 0
-        success = False
-
-        while attempt < max_retries and not success:
-            try:
-                print(f"Downloading {ticker} (attempt {attempt + 1})...")
-                df = yf.download(ticker, period=period, auto_adjust=False)
-                if not df.empty:
-                    df.columns = pd.MultiIndex.from_product([[ticker], df.columns])
-                    all_data.append(df)
-                    success = True
-                else:
-                    print(f"Warning: No data for {ticker}. Skipping.")
-                    success = True
-            except Exception as e:
-                print(f"Error downloading {ticker}: {e}")
-                attempt += 1
-                if attempt < max_retries:
-                    print(f"Retrying {ticker} in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
-                else:
-                    print(f"Failed to download {ticker} after {max_retries} attempts.")
-
-        time.sleep(delay)
-
-    if not all_data:
-        raise ValueError("No data downloaded for any ticker.")
-
-    # Combine dataframes
-    data = pd.concat(all_data, axis=1)
-
-    # Extract prices
-    if ('Adj Close' in data.columns.get_level_values(1)):
-        prices = data.xs('Adj Close', level=1, axis=1)
-    elif ('Close' in data.columns.get_level_values(1)):
+        # print(f"Downloading {ticker}...")
+        df = yf.download(ticker, period=period, auto_adjust=False)
+        # add ticker to column names to match multiindex style
+        df.columns = pd.MultiIndex.from_product([[ticker], df.columns])
+        all_data.append(df)
+        time.sleep(0.5)
+    # Prefer 'Adj Close' over 'Close'
+    if 'Adj Close' in data:
+        prices = data['Adj Close']
+    elif 'Close' in data:
         print("Warning: 'Adj Close' not found. Using 'Close' instead.")
-        prices = data.xs('Close', level=1, axis=1)
+        prices = data['Close']
     else:
         raise ValueError("Neither 'Adj Close' nor 'Close' found in the downloaded data.")
 
     # Calculate daily percent change
-    pct_change = prices.pct_change().dropna() * 100  # percentage
+    pct_change = prices.pct_change().dropna() * 100  # Convert to percentage
 
     # Plotting
     plt.figure(figsize=(10, 5))
-    for ticker in pct_change.columns:
-        plt.plot(pct_change.index, pct_change[ticker], label=ticker, alpha=0.7)
+    for column in pct_change.columns:
+        plt.plot(pct_change.index, pct_change[column], label=column, alpha=0.7)
 
     plt.xlabel('Date')
     plt.ylabel('Daily % Change')
