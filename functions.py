@@ -100,7 +100,7 @@ def fetch_one_ticker(symbol,period="10y"):
         return None
 
 def download_and_plot_stock_data(tickers, period='10y'):
-    tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
+    tickers = list(set(tickers + ['VOO', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
 
     # Download data using Yahoo Finance
     data = yf.download(tickers, period=period, auto_adjust=False)
