@@ -354,31 +354,27 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
 
     return results
 
-def get_vanguard_pe_ratio(ticker="vtv"):
-    url = f"https://investor.vanguard.com/investment-products/etfs/profile/{ticker.lower()}"
+def get_vanguard_etf_pe(ticker):
+    url = f"https://investor.vanguard.com/investment-products/etfs/profile/{ticker.lower()}#portfolio-composition"
     headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
 
-    if response.status_code != 200:
-        print(f"Failed to fetch data: {response.status_code}")
-        return None
-
-    soup = BeautifulSoup(response.text, 'html.parser')
+    soup = BeautifulSoup(resp.text, 'html.parser')
     pe_ratio = None
 
-    for div in soup.find_all('div'):
-        if div.text.strip().lower() == 'price/earnings ratio':
-            parent = div.find_parent('div')
-            if parent:
-                spans = parent.find_all('span')
-                for span in spans:
-                    try:
-                        pe_ratio = float(span.text.strip())
-                        break
-                    except ValueError:
-                        continue
+    # Look for the label text in a div or similar, then extract the adjacent value
+    label = soup.find(lambda tag: tag.name == 'div' and 'price/earnings ratio' in tag.get_text(strip=True).lower())
+    if label:
+        parent = label.find_parent('div')
+        if parent:
+            val = parent.find(lambda tag: tag.name in ['span','div'] and tag.get_text(strip=True).replace('.', '', 1).isdigit())
+            if val:
+                pe_ratio = val.get_text(strip=True)
+
     if pe_ratio:
         print(f"P/E Ratio for {ticker.upper()}: {pe_ratio}")
     else:
-        print(f"Could not find P/E Ratio for {ticker.upper()}.")
+        print(f"Couldn't find P/E Ratio for {ticker.upper()}")
     return pe_ratio
+
