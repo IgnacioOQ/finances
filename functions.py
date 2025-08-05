@@ -6,6 +6,135 @@ def get_sp500_symbols():
     table = pd.read_html(url)[0]
     return table[['Symbol', 'Security', 'GICS Sector']]
 
+# def fetch_one_ticker(symbol, period="10y"):
+#     try:
+#         stock = yf.Ticker(symbol)
+#         hist = stock.history(period=period)
+
+#         if hist.empty:
+#             print("No historical price data available.")
+#             return None
+
+#         # Use Adjusted Close when available, else fallback to Close
+#         if 'Adj Close' in hist.columns and not hist['Adj Close'].isna().all():
+#             hist['Adj_Close'] = hist['Adj Close']
+#             print(f"✅ Using Adjusted Close for {symbol}")
+#         else:
+#             hist['Adj_Close'] = hist['Close']
+#             print(f"⚠️ Adjusted Close not available, using Close for {symbol}")
+
+#         # --- Static Info ---
+#         info = stock.info
+#         shares_outstanding = info.get("sharesOutstanding", None)
+#         pb_ratio = info.get("priceToBook", None)
+#         peg_ratio = info.get("pegRatio", None)
+#         debt_to_equity = info.get("debtToEquity", None)
+#         ebitda = info.get("ebitda", None)
+#         eps = info.get("trailingEps", None)
+#         pe = info.get('trailingPE', None)
+
+#         if shares_outstanding is None:
+#             print("Shares outstanding data not available.")
+#             shares_outstanding = 1  # Avoid NaN in market cap calc
+
+#         # --- Market Cap using price * shares ---
+#         hist['Market_Cap'] = hist['Adj_Close'] * shares_outstanding
+
+#         # --- Approximate P/E Ratio using static EPS ---
+#         if eps and eps != 0:
+#             hist['P/E_Ratio'] = hist['Adj_Close'] / eps
+#         else:
+#             hist['P/E_Ratio'] = None
+
+#         # --- Dividend Yield from monthly dividend and price ---
+#         dividends = stock.dividends
+#         if not dividends.empty:
+#             dividends = dividends.resample('M').sum()
+#             price_monthly = hist['Adj_Close'].resample('M').last()
+#             dividend_yield = (dividends / price_monthly).fillna(0)
+#             hist['Dividend_Yield'] = dividend_yield.reindex(hist.index, method='ffill').fillna(0)
+#         else:
+#             hist['Dividend_Yield'] = 0
+
+#         # --- Print Static Info ---
+#         print(f"\nStatic Financial Metrics for {symbol}:\n")
+
+#         print(f"P/B Ratio: {pb_ratio}")
+#         print(" - Price-to-Book: Market value vs book value.\n")
+
+#         print(f"PEG Ratio: {peg_ratio}")
+#         print(" - PE / Earnings Growth: Value vs growth.\n")
+
+#         print(f"Debt to Equity: {debt_to_equity}")
+#         print(" - Leverage: Total liabilities vs shareholder equity.\n")
+
+#         print(f"EBITDA: {ebitda}")
+#         print(" - Core operating profit before financing & taxes.\n")
+
+#         # --- Plotting Metrics ---
+#         metrics_to_plot = {
+#             'Adj_Close': 'Adjusted Stock Price',
+#             'Market_Cap': 'Market Capitalization',
+#             'P/E_Ratio': 'P/E Ratio (approx)',
+#             'Dividend_Yield': 'Dividend Yield'
+#         }
+
+#         plt.style.use('ggplot')
+#         for column, title in metrics_to_plot.items():
+#             plt.figure(figsize=(10, 5))
+#             plt.plot(hist.index, hist[column], label=title, color='tab:blue')
+#             plt.title(f"{symbol} - {title}")
+#             plt.xlabel('Date')
+#             plt.ylabel(title)
+#             plt.legend()
+#             plt.tight_layout()
+#             plt.show()
+
+#         # --- Standalone P/E Plot with EPS Note ---
+#         if eps:
+#             plt.figure(figsize=(10, 5))
+#             plt.plot(hist.index, hist['P/E_Ratio'], color='tab:orange')
+#             plt.title(f"{symbol} - Historic P/E Ratio (based on static trailing EPS = {eps:.2f})")
+#             plt.xlabel("Date")
+#             plt.ylabel("P/E Ratio (approx)")
+#             plt.grid(True)
+#             plt.tight_layout()
+#             plt.show()
+
+#         return hist[['Adj_Close', 'Market_Cap', 'P/E_Ratio', 'Dividend_Yield']]
+
+#     except Exception as e:
+#         print(f"❌ Error occurred: {e}")
+#         return None
+
+def get_etfdb_pe_ratio(symbol):
+    try:
+        url = f"https://etfdb.com/etf/{symbol.upper()}/"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Look for the table with "P/E Ratio"
+        pe_ratio = None
+        for row in soup.find_all('tr'):
+            header = row.find('th')
+            value = row.find('td')
+            if header and value:
+                if 'P/E Ratio' in header.text:
+                    pe_ratio = float(value.text.strip().replace(',', ''))
+                    break
+
+        if pe_ratio:
+            print(f"✅ Fetched P/E ratio for {symbol} from ETFdb: {pe_ratio}")
+        else:
+            print(f"⚠️ Could not find P/E ratio for {symbol} on ETFdb.")
+
+        return pe_ratio
+    except Exception as e:
+        print(f"❌ Error fetching P/E from ETFdb: {e}")
+        return None
+
 def fetch_one_ticker(symbol, period="10y"):
     try:
         stock = yf.Ticker(symbol)
@@ -15,7 +144,7 @@ def fetch_one_ticker(symbol, period="10y"):
             print("No historical price data available.")
             return None
 
-        # Use Adjusted Close when available, else fallback to Close
+        # Use Adjusted Close when available
         if 'Adj Close' in hist.columns and not hist['Adj Close'].isna().all():
             hist['Adj_Close'] = hist['Adj Close']
             print(f"✅ Using Adjusted Close for {symbol}")
@@ -26,27 +155,29 @@ def fetch_one_ticker(symbol, period="10y"):
         # --- Static Info ---
         info = stock.info
         shares_outstanding = info.get("sharesOutstanding", None)
-        pb_ratio = info.get("priceToBook", None)
-        peg_ratio = info.get("pegRatio", None)
-        debt_to_equity = info.get("debtToEquity", None)
-        ebitda = info.get("ebitda", None)
         eps = info.get("trailingEps", None)
-        pe = info.get('trailingPE', None)
 
         if shares_outstanding is None:
-            print("Shares outstanding data not available.")
-            shares_outstanding = 1  # Avoid NaN in market cap calc
+            print("Shares outstanding not available.")
+            shares_outstanding = 1
 
-        # --- Market Cap using price * shares ---
         hist['Market_Cap'] = hist['Adj_Close'] * shares_outstanding
 
-        # --- Approximate P/E Ratio using static EPS ---
+        # --- P/E Ratio ---
         if eps and eps != 0:
             hist['P/E_Ratio'] = hist['Adj_Close'] / eps
+            pe_source = f"(calculated from EPS = {eps:.2f})"
         else:
-            hist['P/E_Ratio'] = None
+            # Try scraping ETFdb
+            scraped_pe = get_etfdb_pe_ratio(symbol)
+            if scraped_pe:
+                hist['P/E_Ratio'] = scraped_pe
+                pe_source = "(scraped from ETFdb)"
+            else:
+                hist['P/E_Ratio'] = None
+                pe_source = "(not available)"
 
-        # --- Dividend Yield from monthly dividend and price ---
+        # --- Dividend Yield ---
         dividends = stock.dividends
         if not dividends.empty:
             dividends = dividends.resample('M').sum()
@@ -56,55 +187,38 @@ def fetch_one_ticker(symbol, period="10y"):
         else:
             hist['Dividend_Yield'] = 0
 
-        # --- Print Static Info ---
-        print(f"\nStatic Financial Metrics for {symbol}:\n")
+        # --- Output Key Metrics ---
+        print(f"\nStatic Financial Summary for {symbol.upper()}:")
+        print(f"EPS: {eps}")
+        print(f"P/E Ratio {pe_source}: {hist['P/E_Ratio'].iloc[-1]}")
+        print(f"Market Cap (latest): {hist['Market_Cap'].iloc[-1]:,.0f}")
+        print(f"Dividend Yield (latest): {hist['Dividend_Yield'].iloc[-1]:.2%}")
 
-        print(f"P/B Ratio: {pb_ratio}")
-        print(" - Price-to-Book: Market value vs book value.\n")
-
-        print(f"PEG Ratio: {peg_ratio}")
-        print(" - PE / Earnings Growth: Value vs growth.\n")
-
-        print(f"Debt to Equity: {debt_to_equity}")
-        print(" - Leverage: Total liabilities vs shareholder equity.\n")
-
-        print(f"EBITDA: {ebitda}")
-        print(" - Core operating profit before financing & taxes.\n")
-
-        # --- Plotting Metrics ---
+        # --- Plotting ---
         metrics_to_plot = {
             'Adj_Close': 'Adjusted Stock Price',
             'Market_Cap': 'Market Capitalization',
-            'P/E_Ratio': 'P/E Ratio (approx)',
+            'P/E_Ratio': f'P/E Ratio {pe_source}',
             'Dividend_Yield': 'Dividend Yield'
         }
 
         plt.style.use('ggplot')
         for column, title in metrics_to_plot.items():
+            if hist[column].isnull().all():
+                continue
             plt.figure(figsize=(10, 5))
-            plt.plot(hist.index, hist[column], label=title, color='tab:blue')
+            plt.plot(hist.index, hist[column], label=title)
             plt.title(f"{symbol} - {title}")
-            plt.xlabel('Date')
+            plt.xlabel("Date")
             plt.ylabel(title)
             plt.legend()
-            plt.tight_layout()
-            plt.show()
-
-        # --- Standalone P/E Plot with EPS Note ---
-        if eps:
-            plt.figure(figsize=(10, 5))
-            plt.plot(hist.index, hist['P/E_Ratio'], color='tab:orange')
-            plt.title(f"{symbol} - Historic P/E Ratio (based on static trailing EPS = {eps:.2f})")
-            plt.xlabel("Date")
-            plt.ylabel("P/E Ratio (approx)")
-            plt.grid(True)
             plt.tight_layout()
             plt.show()
 
         return hist[['Adj_Close', 'Market_Cap', 'P/E_Ratio', 'Dividend_Yield']]
 
     except Exception as e:
-        print(f"❌ Error occurred: {e}")
+        print(f"❌ Error in fetch_one_ticker: {e}")
         return None
 
 def download_and_plot_stock_data(tickers, period='10y'):
@@ -354,27 +468,27 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
 
     return results
 
-def get_vanguard_etf_pe(ticker):
-    url = f"https://investor.vanguard.com/investment-products/etfs/profile/{ticker.lower()}#portfolio-composition"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    resp = requests.get(url, headers=headers)
-    resp.raise_for_status()
+# def get_vanguard_etf_pe(ticker):
+#     url = f"https://investor.vanguard.com/investment-products/etfs/profile/{ticker.lower()}#portfolio-composition"
+#     headers = {"User-Agent": "Mozilla/5.0"}
+#     resp = requests.get(url, headers=headers)
+#     resp.raise_for_status()
 
-    soup = BeautifulSoup(resp.text, 'html.parser')
-    pe_ratio = None
+#     soup = BeautifulSoup(resp.text, 'html.parser')
+#     pe_ratio = None
 
-    # Look for the label text in a div or similar, then extract the adjacent value
-    label = soup.find(lambda tag: tag.name == 'div' and 'price/earnings ratio' in tag.get_text(strip=True).lower())
-    if label:
-        parent = label.find_parent('div')
-        if parent:
-            val = parent.find(lambda tag: tag.name in ['span','div'] and tag.get_text(strip=True).replace('.', '', 1).isdigit())
-            if val:
-                pe_ratio = val.get_text(strip=True)
+#     # Look for the label text in a div or similar, then extract the adjacent value
+#     label = soup.find(lambda tag: tag.name == 'div' and 'price/earnings ratio' in tag.get_text(strip=True).lower())
+#     if label:
+#         parent = label.find_parent('div')
+#         if parent:
+#             val = parent.find(lambda tag: tag.name in ['span','div'] and tag.get_text(strip=True).replace('.', '', 1).isdigit())
+#             if val:
+#                 pe_ratio = val.get_text(strip=True)
 
-    if pe_ratio:
-        print(f"P/E Ratio for {ticker.upper()}: {pe_ratio}")
-    else:
-        print(f"Couldn't find P/E Ratio for {ticker.upper()}")
-    return pe_ratio
+#     if pe_ratio:
+#         print(f"P/E Ratio for {ticker.upper()}: {pe_ratio}")
+#     else:
+#         print(f"Couldn't find P/E Ratio for {ticker.upper()}")
+#     return pe_ratio
 
