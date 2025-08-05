@@ -3,4 +3,5 @@ import yfinance as yf
 import time
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import time
+import requests
+from bs4 import BeautifulSoup
