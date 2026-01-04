@@ -1,12 +1,37 @@
 from imports import *
 
-# Fetch S&P 500 symbols from Wikipedia
 def get_sp500_symbols():
+    """
+    Fetches the current list of S&P 500 companies from Wikipedia.
+
+    Returns:
+        pd.DataFrame: DataFrame with columns ['Symbol', 'Security', 'GICS Sector']
+                      containing all S&P 500 companies
+    """
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
     table = pd.read_html(url)[0]
     return table[['Symbol', 'Security', 'GICS Sector']]
 
 def fetch_one_ticker(symbol, period="10y"):
+    """
+    Fetches comprehensive financial data for a single ticker and generates visualizations.
+
+    Downloads historical price data, calculates key financial metrics (Market Cap, P/E Ratio,
+    Dividend Yield), and generates plots for each metric over time.
+
+    Args:
+        symbol (str): Stock ticker symbol (e.g., 'AAPL', 'MSFT')
+        period (str): Time period for historical data (default: '10y')
+                     Valid periods: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+
+    Returns:
+        pd.DataFrame: DataFrame with columns ['Adj_Close', 'Market_Cap', 'P/E_Ratio', 'Dividend_Yield']
+                      or None if data cannot be retrieved
+
+    Displays:
+        - Static financial metrics (P/B, PEG, Debt/Equity, EBITDA)
+        - Time series plots for price, market cap, P/E ratio, and dividend yield
+    """
     try:
         stock = yf.Ticker(symbol)
         hist = stock.history(period=period)
@@ -108,6 +133,22 @@ def fetch_one_ticker(symbol, period="10y"):
         return None
 
 def download_and_plot_stock_data(tickers, period='10y'):
+    """
+    Downloads and plots normalized stock performance for multiple tickers.
+
+    Automatically includes VOO and RSP (S&P 500 benchmarks) for comparison.
+    Normalizes all prices to start at 1.0 for easy performance comparison.
+
+    Args:
+        tickers (list): List of ticker symbols to analyze
+        period (str): Time period for historical data (default: '10y')
+
+    Returns:
+        pd.DataFrame: Normalized prices for all tickers (starting value = 1.0)
+
+    Displays:
+        - Line plot showing normalized price performance over time
+    """
     tickers = list(set(tickers + ['VOO', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
 
     # Download data using Yahoo Finance
@@ -150,18 +191,21 @@ def download_and_plot_stock_data(tickers, period='10y'):
 
 
 def download_and_plot_daily_pct_change(tickers, period='10y'):
+    """
+    Downloads stock data and plots daily percentage changes for given tickers.
+
+    Args:
+        tickers (list): List of ticker symbols to download
+        period (str): Time period for historical data (default: '10y')
+
+    Returns:
+        pd.DataFrame: DataFrame containing daily percentage changes for all tickers
+    """
     tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
 
     # Download data using Yahoo Finance
-    # data = yf.download(tickers, period=period, auto_adjust=False)
-    all_data = []
-    for ticker in tickers:
-        # print(f"Downloading {ticker}...")
-        df = yf.download(ticker, period=period, auto_adjust=False)
-        # add ticker to column names to match multiindex style
-        df.columns = pd.MultiIndex.from_product([[ticker], df.columns])
-        all_data.append(df)
-        time.sleep(0.5)
+    data = yf.download(tickers, period=period, auto_adjust=False)
+
     # Prefer 'Adj Close' over 'Close'
     if 'Adj Close' in data:
         prices = data['Adj Close']
@@ -192,6 +236,27 @@ def download_and_plot_daily_pct_change(tickers, period='10y'):
 
 
 def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
+    """
+    Fetches comprehensive historical data for multiple stocks with advanced analytics.
+
+    Downloads monthly historical data, calculates valuation metrics, and computes
+    portfolio-level weighted averages. Generates weighted P/E ratio time series.
+
+    Args:
+        ticker_list (list): List of ticker symbols to analyze
+        period (str): Time period for historical data (default: '5Y')
+        verbose (bool): If True, prints detailed static metrics summary
+
+    Returns:
+        dict: Dictionary mapping symbols to DataFrames with monthly metrics
+              Each DataFrame contains: Close, Market_Cap, P/E_Ratio, Dividend_Yield
+              (ETFs only include Close and Dividend_Yield)
+
+    Displays:
+        - Metric explanations
+        - Weighted static metrics (P/B, PEG, Debt/Equity, EBITDA)
+        - Weighted P/E ratio time series plot
+    """
     results = {}
     static_metrics = {}
     earnings_dict = {}
@@ -354,7 +419,124 @@ def fetch_historical_stock_data(ticker_list, period='5Y', verbose=False):
 
     return results
 
+def generate_performance_summary(tickers, period='1y', benchmark='SPY'):
+    """
+    Generates a comprehensive performance summary report for multiple stocks.
+
+    Calculates key performance metrics including returns, volatility, Sharpe ratio,
+    max drawdown, and relative performance vs. benchmark.
+
+    Args:
+        tickers (list): List of ticker symbols to analyze
+        period (str): Time period for analysis (default: '1y')
+        benchmark (str): Benchmark ticker for comparison (default: 'SPY')
+
+    Returns:
+        pd.DataFrame: Summary table with performance metrics for each ticker
+
+    Metrics included:
+        - Total Return (%): Total percentage return over the period
+        - Annualized Return (%): Annualized return
+        - Volatility (%): Annualized volatility (standard deviation of returns)
+        - Sharpe Ratio: Risk-adjusted return (assuming 0% risk-free rate)
+        - Max Drawdown (%): Maximum peak-to-trough decline
+        - Current Price: Latest closing price
+        - vs Benchmark (%): Outperformance vs benchmark
+    """
+    # Include benchmark if not already in list
+    all_tickers = list(set(tickers + [benchmark]))
+
+    # Download data
+    data = yf.download(all_tickers, period=period, auto_adjust=False, progress=False)
+
+    # Use Adj Close if available
+    if 'Adj Close' in data:
+        prices = data['Adj Close']
+    else:
+        prices = data['Close']
+
+    # Handle single ticker case
+    if len(all_tickers) == 1:
+        prices = pd.DataFrame(prices)
+        prices.columns = all_tickers
+
+    # Calculate metrics
+    summary = {}
+
+    for ticker in all_tickers:
+        ticker_prices = prices[ticker].dropna()
+
+        if len(ticker_prices) < 2:
+            continue
+
+        # Returns
+        total_return = (ticker_prices.iloc[-1] / ticker_prices.iloc[0] - 1) * 100
+        daily_returns = ticker_prices.pct_change().dropna()
+
+        # Annualized metrics
+        trading_days = len(ticker_prices)
+        years = trading_days / 252  # Approximate trading days per year
+        annualized_return = ((1 + total_return/100) ** (1/years) - 1) * 100 if years > 0 else 0
+        volatility = daily_returns.std() * (252 ** 0.5) * 100  # Annualized volatility
+
+        # Sharpe Ratio (assuming 0% risk-free rate)
+        sharpe = (annualized_return / volatility) if volatility > 0 else 0
+
+        # Max Drawdown
+        cumulative = (1 + daily_returns).cumprod()
+        running_max = cumulative.cummax()
+        drawdown = (cumulative - running_max) / running_max * 100
+        max_drawdown = drawdown.min()
+
+        # Current price
+        current_price = ticker_prices.iloc[-1]
+
+        summary[ticker] = {
+            'Total Return (%)': round(total_return, 2),
+            'Annualized Return (%)': round(annualized_return, 2),
+            'Volatility (%)': round(volatility, 2),
+            'Sharpe Ratio': round(sharpe, 2),
+            'Max Drawdown (%)': round(max_drawdown, 2),
+            'Current Price': round(current_price, 2)
+        }
+
+    # Create DataFrame
+    summary_df = pd.DataFrame(summary).T
+
+    # Add vs Benchmark column
+    if benchmark in summary_df.index:
+        benchmark_return = summary_df.loc[benchmark, 'Total Return (%)']
+        summary_df['vs Benchmark (%)'] = summary_df['Total Return (%)'] - benchmark_return
+        summary_df['vs Benchmark (%)'] = summary_df['vs Benchmark (%)'].round(2)
+
+    # Sort by total return
+    summary_df = summary_df.sort_values('Total Return (%)', ascending=False)
+
+    print(f"\n{'='*80}")
+    print(f"PERFORMANCE SUMMARY - {period.upper()}")
+    print(f"{'='*80}\n")
+    print(summary_df.to_string())
+    print(f"\n{'='*80}\n")
+
+    return summary_df
+
+
 def get_etfdb_pe_ratio(symbol):
+    """
+    Scrapes P/E ratio data for ETFs from etfdb.com.
+
+    Useful for obtaining P/E ratios for ETFs, which are not always available
+    through standard financial APIs.
+
+    Args:
+        symbol (str): ETF ticker symbol (e.g., 'VOO', 'SPY')
+
+    Returns:
+        float: P/E ratio of the ETF, or None if not found
+
+    Note:
+        Requires internet connection and may be affected by website structure changes.
+    """
     try:
         url = f"https://etfdb.com/etf/{symbol.upper()}/"
         headers = {"User-Agent": "Mozilla/5.0"}
