@@ -74,8 +74,8 @@ def fetch_one_ticker(symbol, period="10y"):
         # --- Dividend Yield from monthly dividend and price ---
         dividends = stock.dividends
         if not dividends.empty:
-            dividends = dividends.resample('M').sum()
-            price_monthly = hist['Adj_Close'].resample('M').last()
+            dividends = dividends.resample('ME').sum()
+            price_monthly = hist['Adj_Close'].resample('ME').last()
             dividend_yield = (dividends / price_monthly).fillna(0)
             hist['Dividend_Yield'] = dividend_yield.reindex(hist.index, method='ffill').fillna(0)
         else:
@@ -132,16 +132,17 @@ def fetch_one_ticker(symbol, period="10y"):
         print(f"❌ Error occurred: {e}")
         return None
 
-def download_and_plot_stock_data(tickers, period='10y'):
+def download_and_plot_stock_data(tickers, period='10y', benchmarks=None):
     """
     Downloads and plots normalized stock performance for multiple tickers.
 
-    Automatically includes VOO and RSP (S&P 500 benchmarks) for comparison.
+    Automatically includes benchmarks (default: SPY and RSP) for comparison.
     Normalizes all prices to start at 1.0 for easy performance comparison.
 
     Args:
         tickers (list): List of ticker symbols to analyze
         period (str): Time period for historical data (default: '10y')
+        benchmarks (list): List of benchmark tickers to include (default: ['SPY', 'RSP'])
 
     Returns:
         pd.DataFrame: Normalized prices for all tickers (starting value = 1.0)
@@ -149,7 +150,10 @@ def download_and_plot_stock_data(tickers, period='10y'):
     Displays:
         - Line plot showing normalized price performance over time
     """
-    tickers = list(set(tickers + ['VOO', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
+    if benchmarks is None:
+        benchmarks = ['SPY', 'RSP']
+
+    tickers = list(set(tickers + benchmarks))  # Ensure benchmarks are included and avoid duplicates
 
     # Download data using Yahoo Finance
     data = yf.download(tickers, period=period, auto_adjust=False)
@@ -190,18 +194,22 @@ def download_and_plot_stock_data(tickers, period='10y'):
     return normalized_prices
 
 
-def download_and_plot_daily_pct_change(tickers, period='10y'):
+def download_and_plot_daily_pct_change(tickers, period='10y', benchmarks=None):
     """
     Downloads stock data and plots daily percentage changes for given tickers.
 
     Args:
         tickers (list): List of ticker symbols to download
         period (str): Time period for historical data (default: '10y')
+        benchmarks (list): List of benchmark tickers to include (default: ['SPY', 'RSP'])
 
     Returns:
         pd.DataFrame: DataFrame containing daily percentage changes for all tickers
     """
-    tickers = list(set(tickers + ['SPY', 'RSP']))  # Ensure SPY and RSP are included and avoid duplicates
+    if benchmarks is None:
+        benchmarks = ['SPY', 'RSP']
+
+    tickers = list(set(tickers + benchmarks))  # Ensure benchmarks are included and avoid duplicates
 
     # Download data using Yahoo Finance
     data = yf.download(tickers, period=period, auto_adjust=False)

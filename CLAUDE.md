@@ -95,14 +95,14 @@ This repository contains a comprehensive Python toolkit for analyzing stock perf
 
 ### Comparison & Visualization Functions
 
-4. **`download_and_plot_stock_data(tickers, period='10y')`** - [functions.py:135](functions.py#L135)
+4. **`download_and_plot_stock_data(tickers, period='10y', benchmarks=None)`** - [functions.py:135](functions.py#L135)
    - Normalized price performance comparison
-   - Auto-includes VOO and RSP benchmarks
+   - Auto-includes benchmarks (default: SPY and RSP)
    - Returns normalized prices (starting value = 1.0)
 
-5. **`download_and_plot_daily_pct_change(tickers, period='10y')`** - [functions.py:193](functions.py#L193)
+5. **`download_and_plot_daily_pct_change(tickers, period='10y', benchmarks=None)`** - [functions.py:193](functions.py#L193)
    - Daily percentage change visualization
-   - Auto-includes SPY and RSP benchmarks
+   - Auto-includes benchmarks (default: SPY and RSP)
    - Useful for volatility analysis
 
 ### Performance Analysis Functions
@@ -124,17 +124,6 @@ This repository contains a comprehensive Python toolkit for analyzing stock perf
 
 ## Common Issues & Mistakes to Avoid
 
-### 1. **Benchmark Auto-Inclusion Inconsistency**
-
-**Issue:** Different functions auto-include different benchmarks:
-- `download_and_plot_stock_data()` adds: `['VOO', 'RSP']`
-- `download_and_plot_daily_pct_change()` adds: `['SPY', 'RSP']`
-
-**Fix Needed:** Standardize benchmark inclusion across functions or make it configurable via parameter.
-
-**Workaround:** Users should be aware that different functions use different default benchmarks.
-
----
 
 ### 2. **Adjusted Close vs Close Column Handling**
 
@@ -382,7 +371,7 @@ pip install pandas yfinance matplotlib tqdm requests beautifulsoup4
 ### Potential Enhancements:
 
 1. **Historical EPS Data**: Fetch historical earnings for accurate P/E ratios
-2. **Standardize Benchmarks**: Make benchmark inclusion configurable across all functions
+2. **Standardize Benchmarks**: (Completed) Benchmark inclusion is now configurable.
 3. **Database Storage**: Consider SQLite for better historical data management
 4. **Additional Metrics**: Add beta, alpha, correlation analysis
 5. **Portfolio Optimization**: Add Markowitz portfolio optimization
