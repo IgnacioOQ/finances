@@ -8,11 +8,71 @@ This repository includes a pre-configured GitHub Actions workflow (`.github/work
 
 *   **How it works:** GitHub's servers run the script automatically.
 *   **Schedule:** Configured to run at **22:00 UTC** (market close) every weekday (Mon-Fri).
-*   **Setup:**
-    1.  Push this code to a GitHub repository.
-    2.  Enable "Actions" in the repository settings if not already enabled.
-    3.  The workflow will automatically run on schedule.
 *   **Output:** The script commits the generated CSV files back to the `stock_data/` folder in your repository.
+
+### Troubleshooting: "I don't see the workflow"
+If you cannot see "Daily Stock Update" in the Actions tab:
+1.  **Check the Branch:** Workflows generally only appear in the list **after** the code has been merged to the default branch (usually `main` or `master`). If you are working on a feature branch, you may need to filter by that branch or open the specific "Push" event to see the run.
+2.  **Enable Actions:** Go to **Settings > Actions > General** in your repository and ensure "Allow all actions and reusable workflows" is selected.
+
+### Learning: How to Create the Workflow Manually
+If you want to understand how to set this up yourself from scratch:
+
+1.  Go to your GitHub repository.
+2.  Click the **Actions** tab.
+3.  Click **New workflow**.
+4.  Click **set up a workflow yourself** (usually a link at the top).
+5.  Name the file `daily_stock_update.yml`.
+6.  Paste the configuration. Here is a breakdown of what the code does:
+
+```yaml
+name: Daily Stock Update
+
+on:
+  schedule:
+    # "Cron" syntax: minute hour day_of_month month day_of_week
+    # 22:00 UTC on Mon,Tue,Wed,Thu,Fri
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch:  # Allows you to click "Run workflow" manually button
+
+jobs:
+  update-stocks:
+    runs-on: ubuntu-latest  # The virtual machine environment
+
+    # Permission to write to the repo (to save the CSVs)
+    permissions:
+      contents: write
+
+    steps:
+    # 1. Download your code
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # 2. Install Python
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    # 3. Install libraries
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas yfinance matplotlib tqdm requests beautifulsoup4 lxml html5lib
+
+    # 4. Run your script
+    - name: Run daily download script
+      run: python daily_download.py
+
+    # 5. Save the results (Git Commit & Push)
+    - name: Commit and push changes
+      run: |
+        git config --global user.name "GitHub Action"
+        git config --global user.email "action@github.com"
+        git add stock_data/
+        git commit -m "Auto-update stock data" || echo "No changes to commit"
+        git push
+```
 
 ## Option 2: Local Scheduling (Mac/Linux) - `cron`
 
