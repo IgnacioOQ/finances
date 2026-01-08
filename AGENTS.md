@@ -94,6 +94,11 @@ This project is a Python toolkit for stock performance analysis, daily tracking,
     *   Demonstrates the capabilities of the library.
     *   Shows how to use individual functions for ad-hoc analysis.
 
+### Automation & Scheduling
+*   **`daily_download.py`**: A standalone script version of the daily notebook, optimized for automated execution.
+*   **GitHub Actions**: A workflow `.github/workflows/daily_stock_update.yml` is configured to run `daily_download.py` every weekday at 22:00 UTC.
+*   **Local Scheduling**: See `SCHEDULING.md` for instructions on setting up cron jobs or Windows Task Scheduler.
+
 ### Key Files and Directories
 
 #### Directory Structure
@@ -101,6 +106,7 @@ This project is a Python toolkit for stock performance analysis, daily tracking,
 *   **`stock_data/`**: Output directory where generated CSV reports and data from `daily_download.ipynb` are stored.
 *   **`AGENTS_LOG.md`**: Log of interventions and changes made by AI agents.
 *   **`CLAUDE.md`**: Development log and detailed notes on recent changes and guidelines.
+*   **`SCHEDULING.md`**: Guide for setting up automated daily runs.
 
 #### File Dependencies & Logic
 *   **`imports.py`**: Centralizes imports (pandas, yfinance, etc.) to keep other files clean.

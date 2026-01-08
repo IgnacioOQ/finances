@@ -1,0 +1,14 @@
+,Total Return (%),Annualized Return (%),Volatility (%),Sharpe Ratio,Max Drawdown (%),Current Price,vs Benchmark (%),Sector
+AMZN,4.65,889.64,38.81,22.93,0.0,241.56,3.53,Consumer Discretionary
+LLY,3.11,367.85,52.18,7.05,-3.6,1108.09,1.99,Health Care
+GOOGL,2.87,316.05,20.51,15.41,-0.7,321.98,1.75,Communication Services
+QQQ,1.58,120.43,8.35,14.43,0.0,624.02,0.46,Unknown
+V,1.47,109.08,23.73,4.6,-0.47,355.88,0.35,Financials
+NVDA,1.4,101.46,14.38,7.06,-0.85,189.11,0.28,Information Technology
+VOO,1.12,75.53,7.18,10.52,-0.32,634.17,0.0,Unknown
+SPY,1.12,75.59,7.22,10.47,-0.32,689.58,0.0,Unknown
+MSFT,-0.03,-1.55,24.91,-0.06,-0.02,483.47,-1.15,Information Technology
+BRK-B,-1.3,-48.27,10.76,-4.48,-0.59,496.12,-2.42,Financials
+META,-1.73,-58.44,23.22,-2.52,-1.81,648.69,-2.85,Communication Services
+TSLA,-4.07,-87.69,49.92,-1.76,-4.49,431.41,-5.19,Consumer Discretionary
+AAPL,-4.24,-88.74,10.62,-8.36,-3.94,260.33,-5.36,Information Technology
