@@ -9,7 +9,12 @@ def get_sp500_symbols():
                       containing all S&P 500 companies
     """
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    table = pd.read_html(url)[0]
+    # Use requests to get the HTML content with a user agent
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+    response = requests.get(url, headers=headers)
+
+    # Pass the HTML content (text) to read_html
+    table = pd.read_html(response.text)[0]
     return table[['Symbol', 'Security', 'GICS Sector']]
 
 def fetch_one_ticker(symbol, period="10y"):
@@ -539,7 +544,8 @@ def get_etfdb_pe_ratio(symbol):
     """
     try:
         url = f"https://etfdb.com/etf/{symbol.upper()}/"
-        headers = {"User-Agent": "Mozilla/5.0"}
+        # Update header to be more robust
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
         resp = requests.get(url, headers=headers)
         resp.raise_for_status()
 
